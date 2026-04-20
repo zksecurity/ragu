@@ -15,10 +15,8 @@ use clap::{Parser, Subcommand};
 use instance::CircuitInstance;
 
 use crate::instances::{
-    point_add_incomplete::PointAddIncompleteInstance,
-    point_alloc::{PointAllocInstanceFp, PointAllocInstanceFq},
-    point_double::PointDoubleInstance,
-    point_negate::PointNegateInstance,
+    PointAddIncompleteInstance, PointAllocInstanceFp, PointAllocInstanceFq, PointDoubleInstance,
+    PointNegateInstance,
 };
 
 struct ExportTarget {
