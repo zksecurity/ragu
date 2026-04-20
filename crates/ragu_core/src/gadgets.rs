@@ -142,6 +142,27 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
     }
 
     /// Proxy for [`GadgetKind::from_wires_gadget`].
+    ///
+    /// # Round-trip invariant
+    ///
+    /// `from_wires` and [`to_wires`](Self::to_wires) are mutual inverses
+    /// whenever `D::MaybeKind` represents non-existing values (the only
+    /// drivers for which `from_wires` compiles). Specifically, for any wire
+    /// slice `ws` of the correct length:
+    ///
+    /// ```text
+    /// Self::from_wires(&mut ws.iter().cloned())?.to_wires()? == ws
+    /// ```
+    ///
+    /// and for any gadget `g`:
+    ///
+    /// ```text
+    /// Self::from_wires(&mut g.to_wires()?.into_iter())? ≡ g
+    /// ```
+    ///
+    /// (The second equation is exact because `D::MaybeKind = Empty` makes
+    /// all witness values zero-sized, so `from_wires` reconstructs the full
+    /// state, not just the wires.)
     fn from_wires<I: Iterator<Item = D::Wire>>(iter: &mut I) -> Result<Self> {
         Self::Kind::from_wires_gadget::<D, I>(iter)
     }
@@ -182,8 +203,9 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
     /// Serializes this gadget into a flat `Vec` of wires in the same canonical
     /// order that [`map`](Self::map) visits them.
     ///
-    /// Round-trips with [`from_wires`](Self::from_wires) on any driver whose
-    /// `MaybeKind` represents non-existing values.
+    /// Mutual inverse of [`from_wires`](Self::from_wires) for drivers with
+    /// `MaybeKind = Empty`; see that method for the full round-trip
+    /// invariant.
     ///
     /// # Errors
     ///
@@ -290,6 +312,12 @@ pub unsafe trait GadgetKind<F: Field>: core::any::Any {
     /// only usable with drivers whose `MaybeKind` represents non-existing
     /// values (e.g. extraction drivers). Monomorphization will fail via a
     /// `const panic` for drivers that track real witnesses.
+    ///
+    /// # Round-trip invariant
+    ///
+    /// Mutual inverse of serialization via [`Gadget::to_wires`] (which walks
+    /// the same canonical order through [`map_gadget`](Self::map_gadget)). See
+    /// [`Gadget::from_wires`] for the full statement of the invariant.
     ///
     /// # Errors
     ///
