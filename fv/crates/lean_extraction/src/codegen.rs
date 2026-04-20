@@ -25,22 +25,17 @@ fn display_coeff<F: Field + std::fmt::Debug>(c: &Coeff<F>) -> String {
         Coeff::Zero => "0".to_owned(),
         Coeff::One => "1".to_owned(),
         Coeff::Two => "2".to_owned(),
-        Coeff::NegativeOne => format!("({:?} : Expression (F p))", F::ONE.neg()),
+        // TODO: make this work without the extra coercion to `F p` by making circuit_norm normalize negated expressions consistently
+        Coeff::NegativeOne => format!("((-1 : F p) : Expression (F p))"),
         Coeff::Arbitrary(f) => format!("({f:?} : Expression (F p))"),
-        Coeff::NegativeArbitrary(f) => format!("({:?} : Expression (F p))", f.neg()),
+        Coeff::NegativeArbitrary(f) => format!("((-{f:?} : F p) : Expression (F p))"),
     }
 }
 
 fn display_expr<F: Field + std::fmt::Debug>(expr: &Expr<F>) -> String {
     match expr {
-        Expr::Var(i) => {
-            if *i == 0 {
-                "1".to_owned()
-            } else {
-                format!("(var {})", i - 1)
-            }
-        }
-        Expr::InputVar(i) => format!("(input_var.get {i})"),
+        Expr::Var(i) => format!("(var ⟨{i}⟩)"),
+        Expr::InputVar(i) => format!("(input_var[{i}])"),
         Expr::Const(c) => display_coeff(c),
         Expr::Add(l, r) => format!("({} + {})", display_expr(l), display_expr(r)),
         Expr::Mul(l, r) => format!("({} * {})", display_expr(l), display_expr(r)),

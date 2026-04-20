@@ -54,7 +54,7 @@ impl<F: Field> ExtractionDriver<F> {
     /// Wire 0 is pre-reserved as the constant-1 wire; allocations begin at 1.
     pub fn new() -> Self {
         ExtractionDriver {
-            next_wire: 1,
+            next_wire: 0,
             next_input_wire: 0,
             ops: Vec::new(),
             _phantom: PhantomData,
@@ -168,40 +168,13 @@ impl<'dr, F: Field> Driver<'dr> for ExtractionDriver<F> {
     type Wire = Expr<F>;
 
     /// Wire 0 is always the constant-1 wire.
-    const ONE: Expr<F> = Expr::Var(0);
+    const ONE: Expr<F> = Expr::Const(Coeff::One);
 
     /// Returns a constant expression without allocating a wire.
     ///
     /// Overrides the default to avoid the indirection through [`Driver::add`].
     fn constant(&mut self, coeff: Coeff<F>) -> Expr<F> {
         Expr::Const(coeff)
-    }
-
-    /// Allocates three consecutive wire indices for the gate `(a, b, c)` and
-    /// records:
-    /// 1. [`Op::Witness`] for the three wires.
-    /// 2. [`Op::Assert`] for the multiplicative constraint `a · b − c = 0`.
-    fn mul(
-        &mut self,
-        _: impl Fn() -> Result<(Coeff<F>, Coeff<F>, Coeff<F>)>,
-    ) -> Result<(Expr<F>, Expr<F>, Expr<F>)> {
-        let a = self.alloc_wire();
-        let b = self.alloc_wire();
-        let c = self.alloc_wire();
-
-        self.ops.push(Op::Witness { count: 3 });
-
-        // a * b - c = 0
-        let constraint = Expr::Add(
-            Box::new(Expr::Mul(Box::new(Expr::Var(a)), Box::new(Expr::Var(b)))),
-            Box::new(Expr::Mul(
-                Box::new(Expr::Const(Coeff::NegativeOne)),
-                Box::new(Expr::Var(c)),
-            )),
-        );
-        self.ops.push(Op::Assert(constraint));
-
-        Ok((Expr::Var(a), Expr::Var(b), Expr::Var(c)))
     }
 
     /// Builds a virtual wire as a symbolic expression.
