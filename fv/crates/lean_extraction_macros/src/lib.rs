@@ -30,7 +30,7 @@ use syn::{
 /// driver and is passed through untouched (use whatever name you like;
 /// `dr` is conventional). The closure body must return
 /// [`ragu_core::Result<T>`] where `T: Gadget` (or a tuple of gadgets); the
-/// macro flattens it via [`WireCollector::collect_from`].
+/// macro flattens it via [`Gadget::to_wires`].
 ///
 /// Expands to:
 ///
@@ -43,7 +43,7 @@ use syn::{
 ///     fn circuit(dr: &mut ExtractionDriver<Fp>) -> Result<Vec<Expr<Fp>>> {
 ///         let mut p: Point<_, EpAffine> = dr.alloc_input()?;
 ///         let __output = ({ p.double(dr) })?;
-///         WireCollector::collect_from(&__output)
+///         Gadget::to_wires(&__output)
 ///     }
 /// }
 /// ```
@@ -136,7 +136,7 @@ fn expand(input: ExtractGadgetInput) -> syn::Result<TokenStream2> {
             ) -> ::ragu_core::Result<::std::vec::Vec<crate::expr::Expr<#field>>> {
                 #(#input_lets)*
                 let __output = ({ #body })?;
-                crate::instance::WireCollector::collect_from(&__output)
+                ::ragu_core::gadgets::Gadget::to_wires(&__output)
             }
         }
     })

@@ -175,6 +175,39 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
         self.map(&mut counter)?;
         Ok(counter.count)
     }
+
+    /// Serializes this gadget into a flat `Vec` of wires in the same canonical
+    /// order that [`map`](Self::map) visits them.
+    ///
+    /// Round-trips with [`from_wires`](Self::from_wires) on any driver whose
+    /// `MaybeKind` represents non-existing values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying [`GadgetKind::map_gadget`] fails.
+    fn to_wires(&self) -> Result<alloc::vec::Vec<D::Wire>> {
+        struct WireCollector<Src: DriverTypes> {
+            wires: alloc::vec::Vec<Src::ImplWire>,
+            _marker: core::marker::PhantomData<Src>,
+        }
+
+        impl<F: Field, Src: DriverTypes<ImplField = F>> WireMap<F> for WireCollector<Src> {
+            type Src = Src;
+            type Dst = core::marker::PhantomData<F>;
+
+            fn convert_wire(&mut self, wire: &Src::ImplWire) -> Result<()> {
+                self.wires.push(wire.clone());
+                Ok(())
+            }
+        }
+
+        let mut collector = WireCollector::<D> {
+            wires: alloc::vec::Vec::new(),
+            _marker: core::marker::PhantomData,
+        };
+        self.map(&mut collector)?;
+        Ok(collector.wires)
+    }
 }
 
 /// A driver-agnostic kindness of a gadget.

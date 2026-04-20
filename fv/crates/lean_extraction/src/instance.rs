@@ -1,52 +1,15 @@
-use core::marker::PhantomData;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
 use ff::Field;
-use ragu_core::{convert::WireMap, gadgets::Gadget};
 
 use crate::{
     codegen::{FieldExporter, render_autogen_module},
     driver::ExtractionDriver,
     expr::Expr,
 };
-
-/// A [`WireMap`] that collects all physical wires from a gadget by cloning
-/// them into a flat [`Vec`].
-///
-/// Used by [`CircuitInstance`] implementors to manually serialize the output
-/// of a circuit into a list of driver wires.
-pub struct WireCollector<F: Field> {
-    pub wires: Vec<Expr<F>>,
-}
-
-impl<F: Field> WireCollector<F> {
-    pub fn new() -> Self {
-        WireCollector { wires: Vec::new() }
-    }
-
-    pub fn collect_from<'dr, G>(gadget: &G) -> ragu_core::Result<Vec<Expr<F>>>
-    where
-        G: Gadget<'dr, ExtractionDriver<F>>,
-        ExtractionDriver<F>: ragu_core::drivers::Driver<'dr, F = F>,
-    {
-        let mut collector = Self::new();
-        gadget.map(&mut collector)?;
-        Ok(collector.wires)
-    }
-}
-
-impl<F: Field> WireMap<F> for WireCollector<F> {
-    type Src = ExtractionDriver<F>;
-    type Dst = PhantomData<F>;
-
-    fn convert_wire(&mut self, wire: &Expr<F>) -> ragu_core::Result<()> {
-        self.wires.push(wire.clone());
-        Ok(())
-    }
-}
 
 /// A trait for circuit instances that can be extracted by the driver.
 pub trait CircuitInstance {
