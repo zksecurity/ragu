@@ -2,9 +2,8 @@
 //!
 //! Each [`extract_gadget!`] invocation produces a `pub struct <Name>` and a
 //! [`CircuitInstance`](crate::instance::CircuitInstance) impl that
-//! symbolically runs the gadget method through the
-//! [`ExtractionDriver`](crate::driver::ExtractionDriver) and emits the
-//! corresponding autogen Lean module.
+//! symbolically runs the gadget method through the [`ExtractionDriver`] and
+//! emits the corresponding autogen Lean module.
 
 use ff::Field;
 use lean_extraction_macros::extract_gadget;
@@ -14,29 +13,22 @@ use ragu_primitives::{Element, Point};
 
 use crate::driver::ExtractionDriver;
 
-extract_gadget!(
-    PointAllocInstanceFp,
-    Fp,
-    |dr| Point::<_, EpAffine>::alloc(dr, ExtractionDriver::<Fp>::just(|| Fp::ZERO))
-);
+extract_gadget!(PointAllocInstanceFp, Fp, |dr| Point::<_, EpAffine>::alloc(
+    dr,
+    ExtractionDriver::<Fp>::just(|| Fp::ZERO)
+));
 
-extract_gadget!(
-    PointAllocInstanceFq,
-    Fq,
-    |dr| Point::<_, EqAffine>::alloc(dr, ExtractionDriver::<Fq>::just(|| Fq::ZERO))
-);
+extract_gadget!(PointAllocInstanceFq, Fq, |dr| Point::<_, EqAffine>::alloc(
+    dr,
+    ExtractionDriver::<Fq>::just(|| Fq::ZERO)
+));
 
-extract_gadget!(
-    PointDoubleInstance,
-    Fp,
-    |p: Point<_, EpAffine>, dr| p.double(dr)
-);
+extract_gadget!(PointDoubleInstance, Fp, |p: Point<_, EpAffine>, dr| p
+    .double(dr));
 
-extract_gadget!(
-    PointNegateInstance,
-    Fp,
-    |p: Point<_, EpAffine>, dr| Ok(p.negate(dr))
-);
+extract_gadget!(PointNegateInstance, Fp, |p: Point<_, EpAffine>, dr| Ok(
+    p.negate(dr)
+));
 
 extract_gadget!(
     PointAddIncompleteInstance,
