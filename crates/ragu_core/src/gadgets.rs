@@ -88,6 +88,9 @@
 
 mod foreign;
 
+#[cfg(test)]
+mod roundtrip;
+
 use ff::Field;
 
 use super::{
