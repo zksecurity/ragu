@@ -26,7 +26,7 @@ fn display_coeff<F: Field + std::fmt::Debug>(c: &Coeff<F>) -> String {
         Coeff::One => "1".to_owned(),
         Coeff::Two => "2".to_owned(),
         // TODO: make this work without the extra coercion to `F p` by making circuit_norm normalize negated expressions consistently
-        Coeff::NegativeOne => format!("((-1 : F p) : Expression (F p))"),
+        Coeff::NegativeOne => "((-1 : F p) : Expression (F p))".to_owned(),
         Coeff::Arbitrary(f) => format!("({f:?} : Expression (F p))"),
         Coeff::NegativeArbitrary(f) => format!("((-{f:?} : F p) : Expression (F p))"),
     }
@@ -64,7 +64,7 @@ pub fn render_output_len(output_len: usize) -> String {
 pub fn render_exported_operations<F: Field + std::fmt::Debug>(ops: &[Op<F>]) -> String {
     let mut output = String::from(
         "set_option linter.unusedVariables false in\n\
-def exportedOperations (input_var : Var (ProvableVector field inputLen) (F p)) : Operations (F p) := [\n",
+def exportedOperations (input_var : Vector (Expression (F p)) inputLen) : Operations (F p) := [\n",
     );
 
     for op in ops {
@@ -89,7 +89,7 @@ pub fn render_exported_output<F: Field + std::fmt::Debug>(wires: &[Expr<F>]) -> 
     let mut output = String::from(
         "set_option linter.unusedVariables false in\n\
 @[reducible]\n\
-def exportedOutput (input_var : Var (ProvableVector field inputLen) (F p)) : Vector (Expression (F p)) outputLen := #v[\n",
+def exportedOutput (input_var : Vector (Expression (F p)) inputLen) : Vector (Expression (F p)) outputLen := #v[\n",
     );
 
     for (index, expr) in wires.iter().enumerate() {
