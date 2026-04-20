@@ -599,10 +599,20 @@ dependencies = [
  "clap",
  "ff",
  "group",
+ "lean_extraction_macros",
  "ragu_arithmetic",
  "ragu_core",
  "ragu_pasta",
  "ragu_primitives",
+]
+
+[[package]]
+name = "lean_extraction_macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
