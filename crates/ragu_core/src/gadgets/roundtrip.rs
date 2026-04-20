@@ -121,9 +121,10 @@ unsafe impl<FieldType: Field> GadgetKind<FieldType> for SingleKind {
     fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
         iter: &mut I,
     ) -> Result<Single<'dr, D>> {
-        let w = iter
-            .next()
-            .ok_or(crate::Error::VectorLengthMismatch { expected: 1, actual: 0 })?;
+        let w = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+            expected: 1,
+            actual: 0,
+        })?;
         Ok(Single {
             w,
             _marker: PhantomData,
@@ -188,12 +189,14 @@ unsafe impl<FieldType: Field> GadgetKind<FieldType> for PairKind {
     fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
         iter: &mut I,
     ) -> Result<Pair<'dr, D>> {
-        let a = iter
-            .next()
-            .ok_or(crate::Error::VectorLengthMismatch { expected: 2, actual: 0 })?;
-        let b = iter
-            .next()
-            .ok_or(crate::Error::VectorLengthMismatch { expected: 2, actual: 1 })?;
+        let a = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+            expected: 2,
+            actual: 0,
+        })?;
+        let b = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+            expected: 2,
+            actual: 1,
+        })?;
         Ok(Pair {
             a,
             b,
@@ -213,7 +216,10 @@ type S = SymbolicDriver<Fp>;
 fn check_roundtrip<'dr, G: Gadget<'dr, S>>(wires: Vec<u32>) {
     let mut iter = wires.iter().copied();
     let g = G::from_wires(&mut iter).expect("from_wires failed");
-    assert!(iter.next().is_none(), "from_wires did not consume all wires");
+    assert!(
+        iter.next().is_none(),
+        "from_wires did not consume all wires"
+    );
     let recovered = g.to_wires().expect("to_wires failed");
     assert_eq!(recovered, wires);
 }

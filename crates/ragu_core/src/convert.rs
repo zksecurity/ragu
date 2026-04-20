@@ -222,12 +222,14 @@ mod tests {
         fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
             iter: &mut I,
         ) -> Result<Bound<'dr, D, Self>> {
-            let a = iter
-                .next()
-                .ok_or(crate::Error::VectorLengthMismatch { expected: 2, actual: 0 })?;
-            let b = iter
-                .next()
-                .ok_or(crate::Error::VectorLengthMismatch { expected: 2, actual: 1 })?;
+            let a = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 2,
+                actual: 0,
+            })?;
+            let b = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 2,
+                actual: 1,
+            })?;
             Ok(TwoWires {
                 a,
                 b,
@@ -292,9 +294,10 @@ mod tests {
         fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
             iter: &mut I,
         ) -> Result<Bound<'dr, D, Self>> {
-            let w = iter
-                .next()
-                .ok_or(crate::Error::VectorLengthMismatch { expected: 1, actual: 0 })?;
+            let w = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 1,
+                actual: 0,
+            })?;
             Ok(OneWire {
                 w,
                 _marker: core::marker::PhantomData,

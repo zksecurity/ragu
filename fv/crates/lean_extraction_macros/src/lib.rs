@@ -8,8 +8,10 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    Expr, ExprClosure, Ident, Pat, PatType, Token, Type, parse::{Parse, ParseStream},
-    parse_macro_input, spanned::Spanned,
+    Expr, ExprClosure, Ident, Pat, PatType, Token, Type,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    spanned::Spanned,
 };
 
 /// Emit a `CircuitInstance` implementation from a closure over the gadget's
@@ -26,11 +28,11 @@ use syn::{
 /// ```
 ///
 /// The closure's typed parameters are allocated as input gadgets via
-/// [`ExtractionDriver::alloc_input`]. The last closure parameter is the
+/// `ExtractionDriver::alloc_input`. The last closure parameter is the
 /// driver and is passed through untouched (use whatever name you like;
 /// `dr` is conventional). The closure body must return
-/// [`ragu_core::Result<T>`] where `T: Gadget` (or a tuple of gadgets); the
-/// macro flattens it via [`Gadget::to_wires`].
+/// `ragu_core::Result<T>` where `T: Gadget` (or a tuple of gadgets); the
+/// macro flattens it via `Gadget::to_wires`.
 ///
 /// Expands to:
 ///

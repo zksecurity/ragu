@@ -21,7 +21,7 @@ use ragu_core::{
 };
 use ragu_pasta::Fp;
 use ragu_primitives::{
-    Element, GadgetExt,
+    Element,
     promotion::Demoted,
     vec::{ConstLen, FixedVec},
 };
@@ -74,7 +74,10 @@ type S = SymbolicDriver<Fp>;
 fn check_roundtrip<'dr, G: Gadget<'dr, S>>(wires: Vec<u32>) {
     let mut iter = wires.iter().copied();
     let g = G::from_wires(&mut iter).expect("from_wires failed");
-    assert!(iter.next().is_none(), "from_wires did not consume all wires");
+    assert!(
+        iter.next().is_none(),
+        "from_wires did not consume all wires"
+    );
     let recovered = g.to_wires().expect("to_wires failed");
     assert_eq!(recovered, wires);
 }
@@ -109,8 +112,7 @@ fn demoted_element_roundtrip() {
 fn demoted_fixedvec_roundtrip() {
     // Stack Demoted on top of FixedVec<Element> to exercise the recursion
     // through both wrappers.
-    check_roundtrip::<
-        'static,
-        Demoted<'static, S, FixedVec<Element<'static, S>, ConstLen<3>>>,
-    >(vec![10, 20, 30]);
+    check_roundtrip::<'static, Demoted<'static, S, FixedVec<Element<'static, S>, ConstLen<3>>>>(
+        vec![10, 20, 30],
+    );
 }

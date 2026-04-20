@@ -1,7 +1,6 @@
+use lean_extraction_macros::extract_gadget;
 use ragu_pasta::{EpAffine, Fp};
 use ragu_primitives::{Element, Point};
-
-use lean_extraction_macros::extract_gadget;
 
 extract_gadget!(
     PointAddIncompleteInstance,

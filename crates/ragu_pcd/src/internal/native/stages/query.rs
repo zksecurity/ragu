@@ -396,7 +396,10 @@ mod tests {
     fn check_roundtrip<'dr, G: Gadget<'dr, S>>(wires: Vec<u32>) {
         let mut iter = wires.iter().copied();
         let g = G::from_wires(&mut iter).expect("from_wires failed");
-        assert!(iter.next().is_none(), "from_wires did not consume all wires");
+        assert!(
+            iter.next().is_none(),
+            "from_wires did not consume all wires"
+        );
         let recovered = g.to_wires().expect("to_wires failed");
         assert_eq!(recovered, wires);
     }
