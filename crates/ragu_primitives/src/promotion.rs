@@ -177,4 +177,12 @@ unsafe impl<F: Field, G: GadgetKind<F>> GadgetKind<F> for DemotedKind<F, G> {
     ) -> Result<()> {
         G::enforce_equal_gadget(dr, &a.gadget, &b.gadget)
     }
+
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<Bound<'dr, D, Self>> {
+        Ok(Demoted {
+            gadget: G::from_wires_gadget::<DemotedDriver<D>, I>(iter)?,
+        })
+    }
 }

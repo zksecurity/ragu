@@ -135,6 +135,11 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
         Self::Kind::enforce_equal_gadget::<D2, D>(dr, self, other)
     }
 
+    /// Proxy for [`GadgetKind::from_wires_gadget`].
+    fn from_wires<I: Iterator<Item = D::Wire>>(iter: &mut I) -> Result<Self> {
+        Self::Kind::from_wires_gadget::<D, I>(iter)
+    }
+
     /// Returns how many wires are in this gadget.
     ///
     /// Gadgets do not vary in the number of wires they contain, so this should
@@ -233,6 +238,23 @@ pub unsafe trait GadgetKind<F: Field>: core::any::Any {
         a: &Bound<'dr, D2, Self>,
         b: &Bound<'dr, D2, Self>,
     ) -> Result<()>;
+
+    /// Constructs a gadget of this kind by pulling wires from `iter` in the
+    /// same canonical order that [`map_gadget`](Self::map_gadget) visits them.
+    ///
+    /// Witness payloads are synthesized via
+    /// [`MaybeKind::empty`](crate::maybe::MaybeKind::empty), so this method is
+    /// only usable with drivers whose `MaybeKind` represents non-existing
+    /// values (e.g. extraction drivers). Monomorphization will fail via a
+    /// `const panic` for drivers that track real witnesses.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::VectorLengthMismatch`](crate::Error::VectorLengthMismatch)
+    /// if `iter` is exhausted before the gadget's wires have been consumed.
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<Bound<'dr, D, Self>>;
 }
 
 /// Automatically derives the [`Gadget`], [`GadgetKind`] and [`Clone`] traits

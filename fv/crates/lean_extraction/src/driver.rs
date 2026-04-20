@@ -62,12 +62,22 @@ impl<F: Field> ExtractionDriver<F> {
         idx
     }
 
-    /// Allocates `n` input wires.
-    /// NOTE: those are not part of the "main" exported trace.
-    pub fn alloc_input_wires(&mut self, n: usize) -> Vec<Expr<F>> {
-        let start = self.next_input_wire;
-        self.next_input_wire += n;
-        (start..start + n).map(Expr::InputVar).collect()
+    /// Allocates fresh input wires and constructs the gadget `T` from them via
+    /// [`Gadget::from_wires`](ragu_core::gadgets::Gadget::from_wires).
+    ///
+    /// Input wires are not part of the "main" exported trace.
+    pub fn alloc_input<'dr, T: ragu_core::gadgets::Gadget<'dr, Self>>(
+        &mut self,
+    ) -> ragu_core::Result<T> {
+        let mut next_idx = self.next_input_wire;
+        let mut source = core::iter::from_fn(|| {
+            let i = next_idx;
+            next_idx += 1;
+            Some(Expr::InputVar(i))
+        });
+        let result = T::from_wires(&mut source)?;
+        self.next_input_wire = next_idx;
+        Ok(result)
     }
 
     pub fn input_wire_count(&self) -> usize {

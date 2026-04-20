@@ -46,6 +46,12 @@ mod unit_impl {
         ) -> Result<()> {
             Ok(())
         }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+            _iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            Ok(())
+        }
     }
 }
 
@@ -96,6 +102,18 @@ mod array_impl {
             }
             Ok(())
         }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+            iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            let mut result = Vec::with_capacity(N);
+            for _ in 0..N {
+                result.push(G::from_wires_gadget::<D, I>(iter)?);
+            }
+            Ok(result
+                .try_into()
+                .unwrap_or_else(|_| unreachable!("Vec had exactly N elements")))
+        }
     }
 }
 
@@ -139,6 +157,14 @@ mod pair_impl {
             G2::enforce_equal_gadget(dr, &a.1, &b.1)?;
             Ok(())
         }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+            iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            let a = G1::from_wires_gadget::<D, I>(iter)?;
+            let b = G2::from_wires_gadget::<D, I>(iter)?;
+            Ok((a, b))
+        }
     }
 }
 
@@ -177,6 +203,12 @@ mod box_impl {
             b: &Bound<'dr, D2, Self>,
         ) -> Result<()> {
             G::enforce_equal_gadget(dr, a, b)
+        }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+            iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            Ok(Box::new(G::from_wires_gadget::<D, I>(iter)?))
         }
     }
 }
