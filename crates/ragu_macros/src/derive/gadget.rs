@@ -247,6 +247,28 @@ pub fn derive(input: DeriveInput, ragu_core_path: RaguCorePath) -> Result<TokenS
         quote! { #id: #init }
     });
 
+    let from_wires_gadget_inits = fields.iter().map(|(id, ty)| {
+        let init = match ty {
+            FieldType::Wire => quote! {
+                __iter.next().ok_or_else(|| #ragu_core_path::Error::VectorLengthMismatch {
+                    expected: 0,
+                    actual: 0,
+                })?
+            },
+            FieldType::Value => quote! {
+                {
+                    use #ragu_core_path::maybe::MaybeKind;
+                    <<__D as #ragu_core_path::drivers::DriverTypes>::MaybeKind as MaybeKind>::empty()
+                }
+            },
+            FieldType::Gadget => quote! {
+                #ragu_core_path::gadgets::Gadget::from_wires(__iter)?
+            },
+            FieldType::Phantom => quote! { ::core::marker::PhantomData },
+        };
+        quote! { #id: #init }
+    });
+
     let gadgetkind_impl = {
         let driver_ident = &driver.ident;
         let driver_lifetime = &driver.lifetime;
@@ -276,6 +298,18 @@ pub fn derive(input: DeriveInput, ragu_core_path: RaguCorePath) -> Result<TokenS
                 ) -> #ragu_core_path::Result<()> {
                     #( #equality_calls; )*
                     Ok(())
+                }
+
+                fn from_wires_gadget<
+                    #driver_lifetime,
+                    __D: #ragu_core_path::drivers::Driver<#driver_lifetime, F = #driverfield_ident>,
+                    __I: ::core::iter::Iterator<Item = <__D as #ragu_core_path::drivers::Driver<#driver_lifetime>>::Wire>,
+                >(
+                    __iter: &mut __I,
+                ) -> #ragu_core_path::Result<#ragu_core_path::gadgets::Bound<#driver_lifetime, __D, Self>> {
+                    Ok(#struct_ident {
+                        #( #from_wires_gadget_inits, )*
+                    })
                 }
             }
         }
@@ -444,6 +478,25 @@ fn test_gadget_derive_boolean_customdriver() {
                     ::ragu_core::drivers::Driver::enforce_equal(dr, &a.wire, &b.wire)?;
                     Ok(())
                 }
+
+                fn from_wires_gadget<
+                    'my_dr,
+                    __D: ::ragu_core::drivers::Driver<'my_dr, F = DriverField>,
+                    __I: ::core::iter::Iterator<Item = <__D as ::ragu_core::drivers::Driver<'my_dr>>::Wire>,
+                >(
+                    __iter: &mut __I,
+                ) -> ::ragu_core::Result<::ragu_core::gadgets::Bound<'my_dr, __D, Self>> {
+                    Ok(Boolean {
+                        wire: __iter.next().ok_or_else(|| ::ragu_core::Error::VectorLengthMismatch {
+                            expected: 0,
+                            actual: 0,
+                        })?,
+                        value: {
+                            use ::ragu_core::maybe::MaybeKind;
+                            <<__D as ::ragu_core::drivers::DriverTypes>::MaybeKind as MaybeKind>::empty()
+                        },
+                    })
+                }
             }
         ).to_string()
     );
@@ -537,6 +590,27 @@ fn test_gadget_derive() {
                     ::ragu_core::drivers::Driver::enforce_equal(dr, &a.wire_field, &b.wire_field)?;
                     ::ragu_core::gadgets::Gadget::enforce_equal(&a.map_field, dr, &b.map_field)?;
                     Ok(())
+                }
+
+                fn from_wires_gadget<
+                    'mydr,
+                    __D: ::ragu_core::drivers::Driver<'mydr, F = DriverField>,
+                    __I: ::core::iter::Iterator<Item = <__D as ::ragu_core::drivers::Driver<'mydr>>::Wire>,
+                >(
+                    __iter: &mut __I,
+                ) -> ::ragu_core::Result<::ragu_core::gadgets::Bound<'mydr, __D, Self>> {
+                    Ok(MyGadget {
+                        witness_field: {
+                            use ::ragu_core::maybe::MaybeKind;
+                            <<__D as ::ragu_core::drivers::DriverTypes>::MaybeKind as MaybeKind>::empty()
+                        },
+                        wire_field: __iter.next().ok_or_else(|| ::ragu_core::Error::VectorLengthMismatch {
+                            expected: 0,
+                            actual: 0,
+                        })?,
+                        map_field: ::ragu_core::gadgets::Gadget::from_wires(__iter)?,
+                        phantom_field: ::core::marker::PhantomData,
+                    })
                 }
             }
 

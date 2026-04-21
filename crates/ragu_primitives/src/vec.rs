@@ -268,4 +268,15 @@ unsafe impl<F: Field, G: GadgetKind<F>, L: Len> GadgetKind<F> for FixedVec<Phant
         }
         Ok(())
     }
+
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<Bound<'dr, D, Self>> {
+        let n = L::len();
+        let mut v = alloc::vec::Vec::with_capacity(n);
+        for _ in 0..n {
+            v.push(G::from_wires_gadget::<D, I>(iter)?);
+        }
+        FixedVec::new(v)
+    }
 }

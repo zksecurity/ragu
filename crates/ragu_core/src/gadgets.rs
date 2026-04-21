@@ -88,6 +88,9 @@
 
 mod foreign;
 
+#[cfg(test)]
+mod roundtrip;
+
 use ff::Field;
 
 use super::{
@@ -138,6 +141,32 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
         Self::Kind::enforce_equal_gadget::<D2, D>(dr, self, other)
     }
 
+    /// Proxy for [`GadgetKind::from_wires_gadget`].
+    ///
+    /// # Round-trip invariant
+    ///
+    /// `from_wires` and [`to_wires`](Self::to_wires) are mutual inverses
+    /// whenever `D::MaybeKind` represents non-existing values (the only
+    /// drivers for which `from_wires` compiles). Specifically, for any wire
+    /// slice `ws` of the correct length:
+    ///
+    /// ```text
+    /// Self::from_wires(&mut ws.iter().cloned())?.to_wires()? == ws
+    /// ```
+    ///
+    /// and for any gadget `g`:
+    ///
+    /// ```text
+    /// Self::from_wires(&mut g.to_wires()?.into_iter())? ≡ g
+    /// ```
+    ///
+    /// (The second equation is exact because `D::MaybeKind = Empty` makes
+    /// all witness values zero-sized, so `from_wires` reconstructs the full
+    /// state, not just the wires.)
+    fn from_wires<I: Iterator<Item = D::Wire>>(iter: &mut I) -> Result<Self> {
+        Self::Kind::from_wires_gadget::<D, I>(iter)
+    }
+
     /// Returns how many wires are in this gadget.
     ///
     /// Gadgets do not vary in the number of wires they contain, so this
@@ -169,6 +198,40 @@ pub trait Gadget<'dr, D: Driver<'dr>>: Clone {
         };
         self.map(&mut counter)?;
         Ok(counter.count)
+    }
+
+    /// Serializes this gadget into a flat `Vec` of wires in the same canonical
+    /// order that [`map`](Self::map) visits them.
+    ///
+    /// Mutual inverse of [`from_wires`](Self::from_wires) for drivers with
+    /// `MaybeKind = Empty`; see that method for the full round-trip
+    /// invariant.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying [`GadgetKind::map_gadget`] fails.
+    fn to_wires(&self) -> Result<alloc::vec::Vec<D::Wire>> {
+        struct WireCollector<Src: DriverTypes> {
+            wires: alloc::vec::Vec<Src::ImplWire>,
+            _marker: core::marker::PhantomData<Src>,
+        }
+
+        impl<F: Field, Src: DriverTypes<ImplField = F>> WireMap<F> for WireCollector<Src> {
+            type Src = Src;
+            type Dst = core::marker::PhantomData<F>;
+
+            fn convert_wire(&mut self, wire: &Src::ImplWire) -> Result<()> {
+                self.wires.push(wire.clone());
+                Ok(())
+            }
+        }
+
+        let mut collector = WireCollector::<D> {
+            wires: alloc::vec::Vec::new(),
+            _marker: core::marker::PhantomData,
+        };
+        self.map(&mut collector)?;
+        Ok(collector.wires)
     }
 }
 
@@ -240,6 +303,29 @@ pub unsafe trait GadgetKind<F: Field>: core::any::Any {
         a: &Bound<'dr, D2, Self>,
         b: &Bound<'dr, D2, Self>,
     ) -> Result<()>;
+
+    /// Constructs a gadget of this kind by pulling wires from `iter` in the
+    /// same canonical order that [`map_gadget`](Self::map_gadget) visits them.
+    ///
+    /// Witness payloads are synthesized via
+    /// [`MaybeKind::empty`](crate::maybe::MaybeKind::empty), so this method is
+    /// only usable with drivers whose `MaybeKind` represents non-existing
+    /// values (e.g. extraction drivers). Monomorphization will fail via a
+    /// `const panic` for drivers that track real witnesses.
+    ///
+    /// # Round-trip invariant
+    ///
+    /// Mutual inverse of serialization via [`Gadget::to_wires`] (which walks
+    /// the same canonical order through [`map_gadget`](Self::map_gadget)). See
+    /// [`Gadget::from_wires`] for the full statement of the invariant.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::VectorLengthMismatch`](crate::Error::VectorLengthMismatch)
+    /// if `iter` is exhausted before the gadget's wires have been consumed.
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<Bound<'dr, D, Self>>;
 }
 
 /// Automatically derives the [`Gadget`], [`GadgetKind`] and [`Clone`] traits

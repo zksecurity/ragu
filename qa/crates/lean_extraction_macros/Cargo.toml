@@ -1,0 +1,17 @@
+[package]
+name = "lean_extraction_macros"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+bench = false
+
+[dependencies]
+quote = "1.0.40"
+proc-macro2 = "1.0.95"
+syn = { version = "2.0.101", features = ["full"] }

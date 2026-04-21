@@ -218,6 +218,24 @@ mod tests {
             dr.enforce_equal(&a.b, &b.b)?;
             Ok(())
         }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
+            iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            let a = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 2,
+                actual: 0,
+            })?;
+            let b = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 2,
+                actual: 1,
+            })?;
+            Ok(TwoWires {
+                a,
+                b,
+                _marker: core::marker::PhantomData,
+            })
+        }
     }
 
     impl<'dr, D: Driver<'dr>> Gadget<'dr, D> for TwoWires<'dr, D> {
@@ -271,6 +289,19 @@ mod tests {
         ) -> Result<()> {
             dr.enforce_equal(&a.w, &b.w)?;
             Ok(())
+        }
+
+        fn from_wires_gadget<'dr, D: Driver<'dr, F = FieldType>, I: Iterator<Item = D::Wire>>(
+            iter: &mut I,
+        ) -> Result<Bound<'dr, D, Self>> {
+            let w = iter.next().ok_or(crate::Error::VectorLengthMismatch {
+                expected: 1,
+                actual: 0,
+            })?;
+            Ok(OneWire {
+                w,
+                _marker: core::marker::PhantomData,
+            })
         }
     }
 

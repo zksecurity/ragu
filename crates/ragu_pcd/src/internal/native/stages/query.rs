@@ -139,6 +139,12 @@ unsafe impl<F: ff::Field> ragu_core::gadgets::GadgetKind<F>
         }
         Ok(())
     }
+
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<InternalCircuitValues<Element<'dr, D>>> {
+        InternalCircuitValues::try_from_fn(|_| Element::from_wires(iter))
+    }
 }
 
 impl<'dr, D: Driver<'dr>> Gadget<'dr, D> for RxValues<Element<'dr, D>> {
@@ -176,6 +182,12 @@ unsafe impl<F: ff::Field> ragu_core::gadgets::GadgetKind<F>
             a.get(id).enforce_equal(dr, b.get(id))?;
         }
         Ok(())
+    }
+
+    fn from_wires_gadget<'dr, D: Driver<'dr, F = F>, I: Iterator<Item = D::Wire>>(
+        iter: &mut I,
+    ) -> Result<RxValues<Element<'dr, D>>> {
+        RxValues::try_from_fn(|_| Element::from_wires(iter))
     }
 }
 
@@ -317,7 +329,17 @@ impl<C: Cycle, R: Rank, const HEADER_SIZE: usize> staging::Stage<C::CircuitField
 
 #[cfg(test)]
 mod tests {
-    use ragu_pasta::Pasta;
+    use alloc::vec::Vec;
+    use core::marker::PhantomData;
+
+    use ff::Field;
+    use ragu_arithmetic::Coeff;
+    use ragu_core::{
+        drivers::{Driver, DriverTypes},
+        gadgets::Gadget,
+        maybe::Empty,
+    };
+    use ragu_pasta::{Fp, Pasta};
 
     use super::*;
     use crate::internal::tests::{HEADER_SIZE, R, assert_stage_values};
@@ -325,5 +347,72 @@ mod tests {
     #[test]
     fn stage_values_matches_wire_count() {
         assert_stage_values(&Stage::<Pasta, R, { HEADER_SIZE }>::default());
+    }
+
+    /// Test-local driver with `Wire = u32`; `MaybeKind = Empty` so
+    /// `from_wires_gadget` compiles. All circuit-synthesis methods panic.
+    struct SymbolicDriver<F: Field>(PhantomData<F>);
+
+    impl<F: Field> DriverTypes for SymbolicDriver<F> {
+        type ImplField = F;
+        type ImplWire = u32;
+        type MaybeKind = Empty;
+        type LCadd = ();
+        type LCenforce = ();
+        type Extra = ();
+
+        fn gate(
+            &mut self,
+            _: impl Fn() -> Result<(Coeff<F>, Coeff<F>, Coeff<F>)>,
+        ) -> Result<(u32, u32, u32, ())> {
+            unreachable!("SymbolicDriver is for roundtrip tests only")
+        }
+
+        fn assign_extra(&mut self, _: (), _: impl Fn() -> Result<Coeff<F>>) -> Result<u32> {
+            unreachable!("SymbolicDriver is for roundtrip tests only")
+        }
+    }
+
+    impl<'dr, F: Field> Driver<'dr> for SymbolicDriver<F> {
+        type F = F;
+        type Wire = u32;
+        const ONE: u32 = 0;
+
+        fn constant(&mut self, _: Coeff<F>) -> u32 {
+            unreachable!("SymbolicDriver is for roundtrip tests only")
+        }
+
+        fn add(&mut self, _: impl Fn(Self::LCadd) -> Self::LCadd) -> u32 {
+            unreachable!("SymbolicDriver is for roundtrip tests only")
+        }
+
+        fn enforce_zero(&mut self, _: impl Fn(Self::LCenforce) -> Self::LCenforce) -> Result<()> {
+            unreachable!("SymbolicDriver is for roundtrip tests only")
+        }
+    }
+
+    type S = SymbolicDriver<Fp>;
+
+    fn check_roundtrip<'dr, G: Gadget<'dr, S>>(wires: Vec<u32>) {
+        let mut iter = wires.iter().copied();
+        let g = G::from_wires(&mut iter).expect("from_wires failed");
+        assert!(
+            iter.next().is_none(),
+            "from_wires did not consume all wires"
+        );
+        let recovered = g.to_wires().expect("to_wires failed");
+        assert_eq!(recovered, wires);
+    }
+
+    #[test]
+    fn internal_circuit_values_roundtrip() {
+        let wires: Vec<u32> = (0..InternalCircuitIndex::NUM as u32).collect();
+        check_roundtrip::<'static, InternalCircuitValues<Element<'static, S>>>(wires);
+    }
+
+    #[test]
+    fn rx_values_roundtrip() {
+        let wires: Vec<u32> = (0..RxIndex::NUM as u32).collect();
+        check_roundtrip::<'static, RxValues<Element<'static, S>>>(wires);
     }
 }
