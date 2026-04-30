@@ -1,5 +1,5 @@
 import Clean.Circuit
-import Ragu.Circuits.Core.AllocMul
+import Ragu.Circuits.Core.Mul
 
 namespace Ragu.Circuits.Element.AllocSquare
 variable {p : ℕ} [Fact p.Prime]
@@ -9,77 +9,42 @@ structure Square (F : Type) where
   a_sq : F
 deriving ProvableStruct
 
-def main (hintReader : ProverHint (F p) → F p) (_input : Unit) :
+def main (hint : ProverEnvironment (F p) → F p) :
     Circuit (F p) (Var Square (F p)) := do
-  let ⟨x, y, z⟩ ← (witness fun env =>
-    let a := hintReader env.hint
-    (⟨a, a, a * a⟩ : Core.AllocMul.Row (F p))
-    : Circuit (F p) (Var Core.AllocMul.Row (F p)))
-  assertZero (x * y - z)
+  let ⟨x, y, z⟩ ← Core.mul fun env =>
+    let a := hint env
+    ⟨a, a, a * a⟩
   assertZero (x - y)
   return ⟨x, z⟩
-
-def Assumptions (_hintReader : ProverHint (F p) → F p)
-    (_input : Unit) (_data : ProverData (F p)) (_hint : ProverHint (F p)) := True
 
 def Spec (_input : Unit) (out : Square (F p)) (_data : ProverData (F p)) :=
   out.a_sq = out.a^2
 
-def CompletenessSpec (hintReader : ProverHint (F p) → F p)
-    (_input : Unit) (out : Square (F p)) (hint : ProverHint (F p)) :=
-  let a := hintReader hint
-  out.a = a ∧ out.a_sq = a^2
+def ProverSpec (input : F p) (out : Square (F p)) (_hint : ProverHint (F p)) :=
+  out.a = input ∧ out.a_sq = input^2
 
-instance elaborated (hintReader : ProverHint (F p) → F p) :
-    ElaboratedCircuit (F p) unit Square where
-  main := main hintReader
+instance elaborated :
+    ElaboratedCircuit (F p) (UnconstrainedDep field) Square where
+  main
+  output _ offset := { a := varFromOffset field offset, a_sq := varFromOffset field (offset + 2) }
   localLength _ := 3
 
-theorem soundness (hintReader : ProverHint (F p) → F p) :
-    GeneralFormalCircuit.Soundness (F p) (elaborated hintReader) Spec := by
+theorem soundness :
+    GeneralFormalCircuit.WithHint.Soundness (F p) elaborated (fun _ _ => True) Spec := by
   circuit_proof_start
-  obtain ⟨c1, c2⟩ := h_holds
-  rw [add_neg_eq_zero] at c1 c2
-  rw [←c1, c2]
-  ring
+  obtain ⟨h_mul, h_eq⟩ := h_holds
+  -- h_mul : x * y = z, h_eq : x - y = 0
+  rw [add_neg_eq_zero] at h_eq
+  -- Goal: z = x^2
+  rw [← h_mul, h_eq]; ring
 
-theorem completeness (hintReader : ProverHint (F p) → F p) :
-    GeneralFormalCircuit.Completeness (F p) (elaborated hintReader)
-      (Assumptions hintReader) := by
+theorem completeness :
+    GeneralFormalCircuit.WithHint.Completeness (F p) elaborated
+      (fun _ _ _ => True) ProverSpec := by
   circuit_proof_start
-  have h0 := h_env (0 : Fin 3)
-  have h1 := h_env (1 : Fin 3)
-  have h2 := h_env (2 : Fin 3)
-  simp only [toElements, circuit_norm, explicit_provable_type, List.sum] at h0 h1 h2
-  norm_num at h0 h1 h2
-  simp at h0 h1 h2
-  rw [show i₀ + 1 + 1 = i₀ + 2 from by omega]
-  rw [h0, h1, h2]
-  refine ⟨?_, ?_⟩ <;> ring
+  grind
 
-theorem completenessSpec (hintReader : ProverHint (F p) → F p) :
-    GeneralFormalCircuit.CompletenessSpecProof (F p) (elaborated hintReader)
-      (Assumptions hintReader) (CompletenessSpec hintReader) := by
-  circuit_proof_start [CompletenessSpec]
-  have h0 := h_env (0 : Fin 3)
-  have h1 := h_env (1 : Fin 3)
-  have h2 := h_env (2 : Fin 3)
-  simp only [toElements, circuit_norm, explicit_provable_type, List.sum] at h0 h1 h2
-  norm_num at h0 h1 h2
-  simp only [List.foldr_cons, List.foldr_nil, Nat.add_zero, Nat.reduceAdd, Vector.getElem_mk,
-    List.getElem_toArray, List.getElem_cons_zero, List.getElem_cons_succ] at h0 h1 h2
-  rw [show i₀ + 1 + 1 = i₀ + 2 from by omega]
-  refine ⟨h0, ?_⟩
-  rw [h2]; ring
-
-def generalCircuit (hintReader : ProverHint (F p) → F p) :
-    GeneralFormalCircuit (F p) unit Square :=
-  { elaborated hintReader with
-    Assumptions := Assumptions hintReader,
-    Spec,
-    CompletenessSpec := CompletenessSpec hintReader,
-    soundness := soundness hintReader,
-    completeness := completeness hintReader,
-    completenessSpec := completenessSpec hintReader }
+def circuit : GeneralFormalCircuit.WithHint (F p) (UnconstrainedDep field) Square :=
+  { elaborated with Spec, ProverSpec, soundness, completeness }
 
 end Ragu.Circuits.Element.AllocSquare
